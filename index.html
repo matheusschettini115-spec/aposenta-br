@@ -264,10 +264,42 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .disclaimer{margin-top:24px;font-size:.82rem;color:rgba(255,255,255,.55);line-height:1.6;max-width:78ch}
   .copyr{margin-top:16px;font-size:.8rem;color:rgba(255,255,255,.45)}
 
+  /* Sticky urgency bar */
+  .ubar{position:fixed;left:0;right:0;bottom:0;z-index:80;
+    background:linear-gradient(90deg,#A11414,#D51F1F 55%,#E23A2A);
+    border-top:2px solid var(--amber);box-shadow:0 -10px 30px -12px rgba(0,0,0,.45);
+    transform:translateY(110%);transition:transform .45s cubic-bezier(.2,.7,.2,1)}
+  .ubar.show{transform:none;animation:ubarPulse 1.15s ease-in-out infinite}
+  @keyframes ubarPulse{
+    0%,100%{box-shadow:0 -8px 26px -14px rgba(0,0,0,.5),0 0 0 0 rgba(229,58,42,.5)}
+    50%{box-shadow:0 -10px 40px -8px rgba(0,0,0,.5),0 0 36px 5px rgba(229,58,42,.9)}
+  }
+  @keyframes timePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+  .ubar-in{max-width:var(--maxw);margin:0 auto;display:flex;align-items:center;gap:16px;padding:12px 18px;color:#fff}
+  .ubar-txt{display:flex;align-items:center;gap:10px;font-weight:600;font-size:.96rem;flex:1;min-width:0}
+  .ubar-txt .ic{font-size:1.15rem;flex:0 0 auto}
+  .ubar-txt b{color:var(--amber)}
+  .ubar-time{font-family:'Bricolage Grotesque';font-weight:800;background:rgba(255,255,255,.18);
+    border:1px solid rgba(255,255,255,.55);color:#fff;padding:3px 10px;border-radius:8px;
+    font-variant-numeric:tabular-nums;letter-spacing:.02em;white-space:nowrap;
+    animation:timePulse 1s ease-in-out infinite;transform-origin:center}
+  .ubar .btn{padding:11px 20px;font-size:.92rem;flex:0 0 auto}
+  .ubar-close{background:transparent;border:none;color:rgba(255,255,255,.55);font-size:1.4rem;
+    cursor:pointer;line-height:1;padding:2px 6px;flex:0 0 auto}
+  .ubar-close:hover{color:#fff}
+  body.ubar-on{padding-bottom:74px}
+  @media(max-width:640px){
+    .ubar-in{gap:10px;padding:10px 12px;flex-wrap:wrap}
+    .ubar-txt{font-size:.85rem;width:100%}
+    .ubar .btn{flex:1}
+    .ubar-close{position:absolute;top:8px;right:10px}
+    body.ubar-on{padding-bottom:120px}
+  }
+
   /* reveal anim */
   .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease}
   .reveal.in{opacity:1;transform:none}
-  @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
+  @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}.ubar.show,.ubar-time{animation:none}}
 
   /* ---------- Responsive ---------- */
   @media(max-width:900px){
@@ -600,5 +632,60 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     co.observe(bn);
   }
 </script>
+<!-- Barra fixa de urgência (contador para o corte real do dia) -->
+<div class="ubar" id="ubar" role="complementary" aria-label="Atendimento gratuito de hoje">
+  <div class="ubar-in">
+    <div class="ubar-txt">
+      <span class="ic">⏳</span>
+      <span>Análise <b>gratuita</b> de hoje encerra em <span class="ubar-time" id="ubarTime">--:--:--</span></span>
+    </div>
+    <a class="btn btn-cta" href="#formulario">Quero a minha agora</a>
+    <button class="ubar-close" id="ubarClose" aria-label="Fechar aviso">&times;</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* CORTE REAL DO DIA — ajuste para o horário em que a equipe realmente
+     encerra os atendimentos gratuitos. Mantenha verdadeiro. */
+  var CUTOFF_HOUR = 18, CUTOFF_MIN = 0;
+
+  var bar   = document.getElementById('ubar');
+  var out   = document.getElementById('ubarTime');
+  var close = document.getElementById('ubarClose');
+
+  function nextCutoff(){
+    var now = new Date(), t = new Date();
+    t.setHours(CUTOFF_HOUR, CUTOFF_MIN, 0, 0);
+    if (t <= now) t.setDate(t.getDate() + 1);   // passou hoje -> vale para o próximo dia
+    return t;
+  }
+  var end = nextCutoff();
+
+  function tick(){
+    var secs = Math.floor((end - new Date()) / 1000);
+    if (secs <= 0){ end = nextCutoff(); secs = Math.floor((end - new Date()) / 1000); }
+    var h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60), s = secs%60;
+    out.textContent = String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+  tick(); setInterval(tick, 1000);
+
+  // aparece após rolar um pouco (não atrapalha o herói)
+  function reveal(){
+    if (window.scrollY > 460){
+      bar.classList.add('show');
+      document.body.classList.add('ubar-on');
+      window.removeEventListener('scroll', reveal);
+    }
+  }
+  window.addEventListener('scroll', reveal, {passive:true});
+
+  close.addEventListener('click', function(){
+    bar.classList.remove('show');
+    document.body.classList.remove('ubar-on');
+  });
+})();
+</script>
+
 </body>
 </html>
